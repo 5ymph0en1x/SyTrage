@@ -23,9 +23,10 @@ import telebot
 # Bot Parameters
 sigma = 0.00060
 sl_tp_prc = 0.005
+trail_point = 10
 spread_limit = 3.5
-MT = True
-Tgr_Verbose = False
+Multi_Threading = True
+Tgr_Verbose = True
 
 # OANDA Config
 accountID = "<Account ID>"
@@ -114,13 +115,14 @@ def orderlaunch(pair_targeted, direction):
         print(json.dumps(rv, indent=2))
         try:
             trade_id = rv['tradeOpenedID']
-            ordr = TrailingStopLossOrderRequest(tradeID=trade_id, distance=10)
+            ordr = TrailingStopLossOrderRequest(tradeID=trade_id, distance=trail_point)
             r = orders.OrderCreate(accountID, data=ordr.data)
             rv = api.request(r)
         except oandapyV20.exceptions.V20Error as err:
             print(r.status_code, err)
         else:
             print(json.dumps(rv, indent=2))
+            return True
 
 
 def main():
@@ -249,7 +251,7 @@ def main():
             if EUR == -1 and GBP == 1 and USD == -1 and JPY == -1:
                 if spreadcheck({'EUR_GBP', 'GBP_USD', 'GBP_JPY'}) is True:
                     listing = api.request(orders_list)
-                    if len(listing['orders']) is 0 and MT is True:
+                    if len(listing['orders']) is 0 and Multi_Threading is True:
                         p = mp.Pool(3)
                         data = (['EUR_GBP', 1], ['GBP_USD', -1], ['GBP_JPY', -1])
                         threads = p.map_async(orderlaunch, data)
@@ -257,15 +259,17 @@ def main():
                         p.close()
                         p.join()
                         p.terminate()
-                        txt_msg = "Positions Opened via MT..."
-                        tb.send_message(chatid, txt_msg)
+                        if Tgr_Verbose is True:
+                            txt_msg = "Positions Opened via MT..."
+                            tb.send_message(chatid, txt_msg)
                         continue
                     elif len(listing['orders']) is 0:
                         orderlaunch('EUR_GBP', 1)
                         orderlaunch('GBP_USD', -1)
                         orderlaunch('GBP_JPY', -1)
-                        txt_msg = "Positions Opened..."
-                        tb.send_message(chatid, txt_msg)
+                        if Tgr_Verbose is True:
+                            txt_msg = "Positions Opened..."
+                            tb.send_message(chatid, txt_msg)
                         continue
                 # print('BUY: EUR/GBP')
                 # print('SELL: GBP/USD')
@@ -274,7 +278,7 @@ def main():
             if EUR == 1 and GBP == -1 and USD == 1 and JPY == 1:
                 if spreadcheck({'EUR_GBP', 'GBP_USD', 'GBP_JPY'}) is True:
                     listing = api.request(orders_list)
-                    if len(listing['orders']) is 0 and MT is True:
+                    if len(listing['orders']) is 0 and Multi_Threading is True:
                         p = mp.Pool(3)
                         data = (['EUR_GBP', -1], ['GBP_USD', 1], ['GBP_JPY', 1])
                         threads = p.map_async(orderlaunch, data)
@@ -282,15 +286,17 @@ def main():
                         p.close()
                         p.join()
                         p.terminate()
-                        txt_msg = "Positions Opened via MT..."
-                        tb.send_message(chatid, txt_msg)
+                        if Tgr_Verbose is True:
+                            txt_msg = "Positions Opened via MT..."
+                            tb.send_message(chatid, txt_msg)
                         continue
                     elif len(listing['orders']) is 0:
                         orderlaunch('EUR_GBP', -1)
                         orderlaunch('GBP_USD', 1)
                         orderlaunch('GBP_JPY', 1)
-                        txt_msg = "Positions Opened..."
-                        tb.send_message(chatid, txt_msg)
+                        if Tgr_Verbose is True:
+                            txt_msg = "Positions Opened..."
+                            tb.send_message(chatid, txt_msg)
                         continue
                 # print('SELL: EUR/GBP')
                 # print('BUY: GBP/USD')
@@ -299,7 +305,7 @@ def main():
             if EUR == 1 and GBP == -1 and USD == -1 and JPY == -1:
                 if spreadcheck({'EUR_GBP', 'EUR_USD', 'EUR_JPY'}) is True:
                     listing = api.request(orders_list)
-                    if len(listing['orders']) is 0 and MT is True:
+                    if len(listing['orders']) is 0 and Multi_Threading is True:
                         p = mp.Pool(3)
                         data = (['EUR_GBP', -1], ['EUR_USD', -1], ['EUR_JPY', -1])
                         threads = p.map_async(orderlaunch, data)
@@ -307,15 +313,17 @@ def main():
                         p.close()
                         p.join()
                         p.terminate()
-                        txt_msg = "Positions Opened via MT..."
-                        tb.send_message(chatid, txt_msg)
+                        if Tgr_Verbose is True:
+                            txt_msg = "Positions Opened via MT..."
+                            tb.send_message(chatid, txt_msg)
                         continue
                     elif len(listing['orders']) is 0:
                         orderlaunch('EUR_GBP', -1)
                         orderlaunch('EUR_USD', -1)
                         orderlaunch('EUR_JPY', -1)
-                        txt_msg = "Positions Opened..."
-                        tb.send_message(chatid, txt_msg)
+                        if Tgr_Verbose is True:
+                            txt_msg = "Positions Opened..."
+                            tb.send_message(chatid, txt_msg)
                         continue
                 # print('SELL: EUR/GBP')
                 # print('SELL: EUR/USD')
@@ -324,7 +332,7 @@ def main():
             if EUR == -1 and GBP == 1 and USD == 1 and JPY == 1:
                 if spreadcheck({'EUR_GBP', 'EUR_USD', 'EUR_JPY'}) is True:
                     listing = api.request(orders_list)
-                    if len(listing['orders']) is 0 and MT is True:
+                    if len(listing['orders']) is 0 and Multi_Threading is True:
                         p = mp.Pool(3)
                         data = (['EUR_GBP', 1], ['EUR_USD', 1], ['EUR_JPY', 1])
                         threads = p.map_async(orderlaunch, data)
@@ -332,15 +340,17 @@ def main():
                         p.close()
                         p.join()
                         p.terminate()
-                        txt_msg = "Positions Opened via MT..."
-                        tb.send_message(chatid, txt_msg)
+                        if Tgr_Verbose is True:
+                            txt_msg = "Positions Opened via MT..."
+                            tb.send_message(chatid, txt_msg)
                         continue
                     elif len(listing['orders']) is 0:
                         orderlaunch('EUR_GBP', 1)
                         orderlaunch('EUR_USD', 1)
                         orderlaunch('EUR_JPY', 1)
-                        txt_msg = "Positions Opened..."
-                        tb.send_message(chatid, txt_msg)
+                        if Tgr_Verbose is True:
+                            txt_msg = "Positions Opened..."
+                            tb.send_message(chatid, txt_msg)
                         continue
                 # print('BUY: EUR/GBP')
                 # print('BUY: EUR/USD')
@@ -349,7 +359,7 @@ def main():
             if EUR == -1 and GBP == -1 and USD == -1 and JPY == 1:
                 if spreadcheck({'GBP_JPY', 'EUR_JPY', 'USD_JPY'}) is True:
                     listing = api.request(orders_list)
-                    if len(listing['orders']) is 0 and MT is True:
+                    if len(listing['orders']) is 0 and Multi_Threading is True:
                         p = mp.Pool(3)
                         data = (['GBP_JPY', 1], ['EUR_JPY', 1], ['USD_JPY', 1])
                         threads = p.map_async(orderlaunch, data)
@@ -357,15 +367,17 @@ def main():
                         p.close()
                         p.join()
                         p.terminate()
-                        txt_msg = "Positions Opened via MT..."
-                        tb.send_message(chatid, txt_msg)
+                        if Tgr_Verbose is True:
+                            txt_msg = "Positions Opened via MT..."
+                            tb.send_message(chatid, txt_msg)
                         continue
                     elif len(listing['orders']) is 0:
                         orderlaunch('GBP_JPY', 1)
                         orderlaunch('EUR_JPY', 1)
                         orderlaunch('USD_JPY', 1)
-                        txt_msg = "Positions Opened..."
-                        tb.send_message(chatid, txt_msg)
+                        if Tgr_Verbose is True:
+                            txt_msg = "Positions Opened..."
+                            tb.send_message(chatid, txt_msg)
                         continue
                 # print('BUY: GBP/JPY')
                 # print('BUY: EUR/JPY')
@@ -374,7 +386,7 @@ def main():
             if EUR == 1 and GBP == 1 and USD == 1 and JPY == -1:
                 if spreadcheck({'GBP_JPY', 'EUR_JPY', 'USD_JPY'}) is True:
                     listing = api.request(orders_list)
-                    if len(listing['orders']) is 0 and MT is True:
+                    if len(listing['orders']) is 0 and Multi_Threading is True:
                         p = mp.Pool(3)
                         data = (['GBP_JPY', -1], ['EUR_JPY', -1], ['USD_JPY', -1])
                         threads = p.map_async(orderlaunch, data)
@@ -382,15 +394,17 @@ def main():
                         p.close()
                         p.join()
                         p.terminate()
-                        txt_msg = "Positions Opened via MT..."
-                        tb.send_message(chatid, txt_msg)
+                        if Tgr_Verbose is True:
+                            txt_msg = "Positions Opened via MT..."
+                            tb.send_message(chatid, txt_msg)
                         continue
                     elif len(listing['orders']) is 0:
                         orderlaunch('GBP_JPY', -1)
                         orderlaunch('EUR_JPY', -1)
                         orderlaunch('USD_JPY', -1)
-                        txt_msg = "Positions Opened..."
-                        tb.send_message(chatid, txt_msg)
+                        if Tgr_Verbose is True:
+                            txt_msg = "Positions Opened..."
+                            tb.send_message(chatid, txt_msg)
                         continue
                 # print('SELL: GBP/JPY')
                 # print('SELL: EUR/JPY')
@@ -399,7 +413,7 @@ def main():
             if EUR == -1 and GBP == -1 and USD == 1 and JPY == -1:
                 if spreadcheck({'EUR_USD', 'GBP_USD', 'USD_JPY'}) is True:
                     listing = api.request(orders_list)
-                    if len(listing['orders']) is 0 and MT is True:
+                    if len(listing['orders']) is 0 and Multi_Threading is True:
                         p = mp.Pool(3)
                         data = (['EUR_USD', 1], ['GBP_USD', 1], ['USD_JPY', -1])
                         threads = p.map_async(orderlaunch, data)
@@ -407,15 +421,17 @@ def main():
                         p.close()
                         p.join()
                         p.terminate()
-                        txt_msg = "Positions Opened via MT..."
-                        tb.send_message(chatid, txt_msg)
+                        if Tgr_Verbose is True:
+                            txt_msg = "Positions Opened via MT..."
+                            tb.send_message(chatid, txt_msg)
                         continue
                     elif len(listing['orders']) is 0:
                         orderlaunch('EUR_USD', 1)
                         orderlaunch('GBP_USD', 1)
                         orderlaunch('USD_JPY', -1)
-                        txt_msg = "Positions Opened..."
-                        tb.send_message(chatid, txt_msg)
+                        if Tgr_Verbose is True:
+                            txt_msg = "Positions Opened..."
+                            tb.send_message(chatid, txt_msg)
                         continue
                 # print('BUY: EUR/USD')
                 # print('BUY: GBP/USD')
@@ -424,7 +440,7 @@ def main():
             if EUR == 1 and GBP == 1 and USD == -1 and JPY == 1:
                 if spreadcheck({'EUR_USD', 'GBP_USD', 'USD_JPY'}) is True:
                     listing = api.request(orders_list)
-                    if len(listing['orders']) is 0 and MT is True:
+                    if len(listing['orders']) is 0 and Multi_Threading is True:
                         p = mp.Pool(3)
                         data = (['EUR_USD', -1], ['GBP_USD', -1], ['USD_JPY', 1])
                         threads = p.map_async(orderlaunch, data)
@@ -432,15 +448,17 @@ def main():
                         p.close()
                         p.join()
                         p.terminate()
-                        txt_msg = "Positions Opened via MT..."
-                        tb.send_message(chatid, txt_msg)
+                        if Tgr_Verbose is True:
+                            txt_msg = "Positions Opened via MT..."
+                            tb.send_message(chatid, txt_msg)
                         continue
                     elif len(listing['orders']) is 0:
                         orderlaunch('EUR_USD', -1)
                         orderlaunch('GBP_USD', -1)
                         orderlaunch('USD_JPY', 1)
-                        txt_msg = "Positions Opened..."
-                        tb.send_message(chatid, txt_msg)
+                        if Tgr_Verbose is True:
+                            txt_msg = "Positions Opened..."
+                            tb.send_message(chatid, txt_msg)
                         continue
                 # print('SELL: EUR/USD')
                 # print('SELL: GBP/USD')
