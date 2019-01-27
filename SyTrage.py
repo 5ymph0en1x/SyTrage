@@ -33,7 +33,7 @@ access_token = "<Account Token>"
 
 # Telegram Config
 TOKEN = "<Telegram Token>"
-chatid = <Chat ID>
+chatid = "<Chat ID>"
 tb = telebot.TeleBot(TOKEN)
 
 # Do Not Touch
