@@ -16,6 +16,7 @@ from oandapyV20.contrib.requests import TrailingStopLossOrderRequest
 from oandapyV20.endpoints.pricing import PricingInfo
 from oandapyV20.endpoints.pricing import PricingStream
 from oandapyV20.exceptions import V20Error
+import oandapyV20.endpoints.accounts as accounts
 import oandapyV20.endpoints.instruments as instruments
 import oandapyV20.endpoints.orders as orders
 import telebot
@@ -148,6 +149,7 @@ def main():
     close_GJ = 0
 
     minute_cached = 0
+    in_action = False
 
     try:
         R = api.request(stream)
@@ -160,6 +162,16 @@ def main():
             JPY = 0
 
             if minute_cached is not datetime.now().time().minute:
+                listing = api.request(orders_list)
+                if in_action is True and len(listing['orders']) is 0:
+                    if Tgr_Verbose is True:
+                        report = accounts.AccountSummary(accountID)
+                        api.request(report)
+                        account_details = report.response
+                        balance = account_details['account']['balance'] + ' ' + account_details['account']['currency']
+                        txt_msg = "Positions Closed...\nBalance: " + balance
+                        tb.send_message(chatid, txt_msg)
+                    in_action = False
                 candle_EU = api.request(CEU)
                 candle_GU = api.request(CGU)
                 candle_EG = api.request(CEG)
@@ -262,6 +274,7 @@ def main():
                         if Tgr_Verbose is True:
                             txt_msg = "Positions Opened via MT..."
                             tb.send_message(chatid, txt_msg)
+                        in_action = True
                         continue
                     elif len(listing['orders']) is 0:
                         orderlaunch('EUR_GBP', 1)
@@ -270,6 +283,7 @@ def main():
                         if Tgr_Verbose is True:
                             txt_msg = "Positions Opened..."
                             tb.send_message(chatid, txt_msg)
+                        in_action = True
                         continue
                 # print('BUY: EUR/GBP')
                 # print('SELL: GBP/USD')
@@ -289,6 +303,7 @@ def main():
                         if Tgr_Verbose is True:
                             txt_msg = "Positions Opened via MT..."
                             tb.send_message(chatid, txt_msg)
+                        in_action = True
                         continue
                     elif len(listing['orders']) is 0:
                         orderlaunch('EUR_GBP', -1)
@@ -297,6 +312,7 @@ def main():
                         if Tgr_Verbose is True:
                             txt_msg = "Positions Opened..."
                             tb.send_message(chatid, txt_msg)
+                        in_action = True
                         continue
                 # print('SELL: EUR/GBP')
                 # print('BUY: GBP/USD')
@@ -316,6 +332,7 @@ def main():
                         if Tgr_Verbose is True:
                             txt_msg = "Positions Opened via MT..."
                             tb.send_message(chatid, txt_msg)
+                        in_action = True
                         continue
                     elif len(listing['orders']) is 0:
                         orderlaunch('EUR_GBP', -1)
@@ -324,6 +341,7 @@ def main():
                         if Tgr_Verbose is True:
                             txt_msg = "Positions Opened..."
                             tb.send_message(chatid, txt_msg)
+                        in_action = True
                         continue
                 # print('SELL: EUR/GBP')
                 # print('SELL: EUR/USD')
@@ -343,6 +361,7 @@ def main():
                         if Tgr_Verbose is True:
                             txt_msg = "Positions Opened via MT..."
                             tb.send_message(chatid, txt_msg)
+                        in_action = True
                         continue
                     elif len(listing['orders']) is 0:
                         orderlaunch('EUR_GBP', 1)
@@ -351,6 +370,7 @@ def main():
                         if Tgr_Verbose is True:
                             txt_msg = "Positions Opened..."
                             tb.send_message(chatid, txt_msg)
+                        in_action = True
                         continue
                 # print('BUY: EUR/GBP')
                 # print('BUY: EUR/USD')
@@ -370,6 +390,7 @@ def main():
                         if Tgr_Verbose is True:
                             txt_msg = "Positions Opened via MT..."
                             tb.send_message(chatid, txt_msg)
+                        in_action = True
                         continue
                     elif len(listing['orders']) is 0:
                         orderlaunch('GBP_JPY', 1)
@@ -378,6 +399,7 @@ def main():
                         if Tgr_Verbose is True:
                             txt_msg = "Positions Opened..."
                             tb.send_message(chatid, txt_msg)
+                        in_action = True
                         continue
                 # print('BUY: GBP/JPY')
                 # print('BUY: EUR/JPY')
@@ -397,6 +419,7 @@ def main():
                         if Tgr_Verbose is True:
                             txt_msg = "Positions Opened via MT..."
                             tb.send_message(chatid, txt_msg)
+                        in_action = True
                         continue
                     elif len(listing['orders']) is 0:
                         orderlaunch('GBP_JPY', -1)
@@ -405,6 +428,7 @@ def main():
                         if Tgr_Verbose is True:
                             txt_msg = "Positions Opened..."
                             tb.send_message(chatid, txt_msg)
+                        in_action = True
                         continue
                 # print('SELL: GBP/JPY')
                 # print('SELL: EUR/JPY')
@@ -424,6 +448,7 @@ def main():
                         if Tgr_Verbose is True:
                             txt_msg = "Positions Opened via MT..."
                             tb.send_message(chatid, txt_msg)
+                        in_action = True
                         continue
                     elif len(listing['orders']) is 0:
                         orderlaunch('EUR_USD', 1)
@@ -432,6 +457,7 @@ def main():
                         if Tgr_Verbose is True:
                             txt_msg = "Positions Opened..."
                             tb.send_message(chatid, txt_msg)
+                        in_action = True
                         continue
                 # print('BUY: EUR/USD')
                 # print('BUY: GBP/USD')
@@ -451,6 +477,7 @@ def main():
                         if Tgr_Verbose is True:
                             txt_msg = "Positions Opened via MT..."
                             tb.send_message(chatid, txt_msg)
+                        in_action = True
                         continue
                     elif len(listing['orders']) is 0:
                         orderlaunch('EUR_USD', -1)
@@ -459,6 +486,7 @@ def main():
                         if Tgr_Verbose is True:
                             txt_msg = "Positions Opened..."
                             tb.send_message(chatid, txt_msg)
+                        in_action = True
                         continue
                 # print('SELL: EUR/USD')
                 # print('SELL: GBP/USD')
