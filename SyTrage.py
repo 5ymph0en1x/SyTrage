@@ -1,9 +1,8 @@
 # Configuration
 # pip3 install oandapyV20
 # pip3 install pyTelegramBotAPI
-# pip3 install multiprocessing
 # Execution
-# python3 SyTrage.py
+# python SyTrage.py
 
 import json
 from datetime import *
