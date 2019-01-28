@@ -197,15 +197,15 @@ def main():
                 if candle_EU['candles'][0]['complete'] is False and candle_EU_minute == actual_minute:
                     close_EU = candle_EU['candles'][0]['mid']['o']
                 if candle_GU['candles'][0]['complete'] is False and candle_GU_minute == actual_minute:
-                    close_GU = candle_GU['candles'][0]['mid']['c']
+                    close_GU = candle_GU['candles'][0]['mid']['o']
                 if candle_EG['candles'][0]['complete'] is False and candle_EG_minute == actual_minute:
-                    close_EG = candle_EG['candles'][0]['mid']['c']
+                    close_EG = candle_EG['candles'][0]['mid']['o']
                 if candle_EJ['candles'][0]['complete'] is False and candle_EJ_minute == actual_minute:
-                    close_EJ = candle_EJ['candles'][0]['mid']['c']
+                    close_EJ = candle_EJ['candles'][0]['mid']['o']
                 if candle_UJ['candles'][0]['complete'] is False and candle_UJ_minute == actual_minute:
-                    close_UJ = candle_UJ['candles'][0]['mid']['c']
+                    close_UJ = candle_UJ['candles'][0]['mid']['o']
                 if candle_GJ['candles'][0]['complete'] is False and candle_GJ_minute == actual_minute:
-                    close_GJ = candle_GJ['candles'][0]['mid']['c']
+                    close_GJ = candle_GJ['candles'][0]['mid']['o']
                 if (float(close_EU) == 0 or float(close_EG) == 0 or float(close_EJ) == 0
                         or float(close_GJ) == 0 or float(close_GU) == 0 or float(close_UJ) == 0):
                     print("Warming Up...")
