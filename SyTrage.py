@@ -6,6 +6,7 @@
 
 import json
 from datetime import *
+from dateutil import parser
 import multiprocessing as mp
 import oandapyV20
 from oandapyV20 import API
@@ -69,7 +70,9 @@ def spreadcheck(pairs_checked):
     return True
 
 
-def orderlaunch(pair_targeted, direction):
+def orderlaunch(args):
+
+    pair_targeted, direction = args
 
     info = PricingInfo(accountID=accountID, params={"instruments": pair_targeted})
     mkt_order = None
@@ -77,7 +80,7 @@ def orderlaunch(pair_targeted, direction):
     if direction is 0:
         return False
 
-    if direction is 1:
+    elif direction is 1:
         raw_current_price = api.request(info)
         bid_current = float(raw_current_price['prices'][0]['bids'][0]['price'])
         decim = str(bid_current)[::-1].find('.')
@@ -90,7 +93,7 @@ def orderlaunch(pair_targeted, direction):
             takeProfitOnFill=TakeProfitDetails(price=take_profit).data,
             stopLossOnFill=StopLossDetails(price=stop_loss).data)
 
-    if direction is -1:
+    elif direction is -1:
         raw_current_price = api.request(info)
         ask_current = float(raw_current_price['prices'][0]['asks'][0]['price'])
         decim = str(ask_current)[::-1].find('.')
@@ -111,6 +114,7 @@ def orderlaunch(pair_targeted, direction):
         rv = api.request(r)
     except oandapyV20.exceptions.V20Error as err:
         print(r.status_code, err)
+        return False
     else:
         print(json.dumps(rv, indent=2))
         try:
@@ -120,6 +124,7 @@ def orderlaunch(pair_targeted, direction):
             rv = api.request(r)
         except oandapyV20.exceptions.V20Error as err:
             print(r.status_code, err)
+            return False
         else:
             print(json.dumps(rv, indent=2))
             return True
@@ -150,6 +155,10 @@ def main():
     minute_cached = 0
     in_action = False
 
+    listing = api.request(orders_list)
+    if len(listing['orders']) is not 0 and in_action is False:
+        in_action = True
+
     try:
         R = api.request(stream)
 
@@ -167,7 +176,8 @@ def main():
                         report = accounts.AccountSummary(accountID)
                         api.request(report)
                         account_details = report.response
-                        balance = account_details['account']['balance'] + ' ' + account_details['account']['currency']
+                        balance = str(round(float(account_details['account']['balance']), 2)) + ' ' + \
+                                  account_details['account']['currency']
                         txt_msg = "Positions Closed...\nBalance: " + balance
                         tb.send_message(chatid, txt_msg)
                     in_action = False
@@ -177,16 +187,34 @@ def main():
                 candle_EJ = api.request(CEJ)
                 candle_UJ = api.request(CUJ)
                 candle_GJ = api.request(CGJ)
-                close_EU = candle_EU['candles'][0]['mid']['c']
-                close_GU = candle_GU['candles'][0]['mid']['c']
-                close_EG = candle_EG['candles'][0]['mid']['c']
-                close_EJ = candle_EJ['candles'][0]['mid']['c']
-                close_UJ = candle_UJ['candles'][0]['mid']['c']
-                close_GJ = candle_GJ['candles'][0]['mid']['c']
-                if close_EU is 0 or close_EG is 0 or close_EJ is 0 \
-                        or close_GJ is 0 or close_GU is 0 or close_UJ is 0:
+                actual_minute = datetime.now().time().minute
+                candle_EU_minute = parser.parse(candle_EU['candles'][0]['time']).minute
+                candle_GU_minute = parser.parse(candle_GU['candles'][0]['time']).minute
+                candle_EG_minute = parser.parse(candle_EG['candles'][0]['time']).minute
+                candle_EJ_minute = parser.parse(candle_EJ['candles'][0]['time']).minute
+                candle_UJ_minute = parser.parse(candle_UJ['candles'][0]['time']).minute
+                candle_GJ_minute = parser.parse(candle_GJ['candles'][0]['time']).minute
+                if candle_EU['candles'][0]['complete'] is False and candle_EU_minute == actual_minute:
+                    close_EU = candle_EU['candles'][0]['mid']['o']
+                if candle_GU['candles'][0]['complete'] is False and candle_GU_minute == actual_minute:
+                    close_GU = candle_GU['candles'][0]['mid']['c']
+                if candle_EG['candles'][0]['complete'] is False and candle_EG_minute == actual_minute:
+                    close_EG = candle_EG['candles'][0]['mid']['c']
+                if candle_EJ['candles'][0]['complete'] is False and candle_EJ_minute == actual_minute:
+                    close_EJ = candle_EJ['candles'][0]['mid']['c']
+                if candle_UJ['candles'][0]['complete'] is False and candle_UJ_minute == actual_minute:
+                    close_UJ = candle_UJ['candles'][0]['mid']['c']
+                if candle_GJ['candles'][0]['complete'] is False and candle_GJ_minute == actual_minute:
+                    close_GJ = candle_GJ['candles'][0]['mid']['c']
+                if (float(close_EU) == 0 or float(close_EG) == 0 or float(close_EJ) == 0
+                        or float(close_GJ) == 0 or float(close_GU) == 0 or float(close_UJ) == 0):
+                    print("Warming Up...")
                     continue
-                minute_cached = datetime.now().time().minute
+                if(candle_EU_minute == actual_minute and candle_GU_minute == actual_minute
+                        and candle_EG_minute == actual_minute and candle_EJ_minute == actual_minute
+                        and candle_UJ_minute == actual_minute and candle_GJ_minute == actual_minute):
+                    minute_cached = datetime.now().time().minute
+                    print("Minute Data Updated")
 
             if i['type'] == 'PRICE':
                 pair = i['instrument']
@@ -276,9 +304,9 @@ def main():
                         in_action = True
                         continue
                     elif len(listing['orders']) is 0:
-                        orderlaunch('EUR_GBP', 1)
-                        orderlaunch('GBP_USD', -1)
-                        orderlaunch('GBP_JPY', -1)
+                        orderlaunch(['EUR_GBP', 1])
+                        orderlaunch(['GBP_USD', -1])
+                        orderlaunch(['GBP_JPY', -1])
                         if Tgr_Verbose is True:
                             txt_msg = "Positions Opened..."
                             tb.send_message(chatid, txt_msg)
@@ -305,9 +333,9 @@ def main():
                         in_action = True
                         continue
                     elif len(listing['orders']) is 0:
-                        orderlaunch('EUR_GBP', -1)
-                        orderlaunch('GBP_USD', 1)
-                        orderlaunch('GBP_JPY', 1)
+                        orderlaunch(['EUR_GBP', -1])
+                        orderlaunch(['GBP_USD', 1])
+                        orderlaunch(['GBP_JPY', 1])
                         if Tgr_Verbose is True:
                             txt_msg = "Positions Opened..."
                             tb.send_message(chatid, txt_msg)
@@ -334,9 +362,9 @@ def main():
                         in_action = True
                         continue
                     elif len(listing['orders']) is 0:
-                        orderlaunch('EUR_GBP', -1)
-                        orderlaunch('EUR_USD', -1)
-                        orderlaunch('EUR_JPY', -1)
+                        orderlaunch(['EUR_GBP', -1])
+                        orderlaunch(['EUR_USD', -1])
+                        orderlaunch(['EUR_JPY', -1])
                         if Tgr_Verbose is True:
                             txt_msg = "Positions Opened..."
                             tb.send_message(chatid, txt_msg)
@@ -363,9 +391,9 @@ def main():
                         in_action = True
                         continue
                     elif len(listing['orders']) is 0:
-                        orderlaunch('EUR_GBP', 1)
-                        orderlaunch('EUR_USD', 1)
-                        orderlaunch('EUR_JPY', 1)
+                        orderlaunch(['EUR_GBP', 1])
+                        orderlaunch(['EUR_USD', 1])
+                        orderlaunch(['EUR_JPY', 1])
                         if Tgr_Verbose is True:
                             txt_msg = "Positions Opened..."
                             tb.send_message(chatid, txt_msg)
@@ -392,9 +420,9 @@ def main():
                         in_action = True
                         continue
                     elif len(listing['orders']) is 0:
-                        orderlaunch('GBP_JPY', 1)
-                        orderlaunch('EUR_JPY', 1)
-                        orderlaunch('USD_JPY', 1)
+                        orderlaunch(['GBP_JPY', 1])
+                        orderlaunch(['EUR_JPY', 1])
+                        orderlaunch(['USD_JPY', 1])
                         if Tgr_Verbose is True:
                             txt_msg = "Positions Opened..."
                             tb.send_message(chatid, txt_msg)
@@ -421,9 +449,9 @@ def main():
                         in_action = True
                         continue
                     elif len(listing['orders']) is 0:
-                        orderlaunch('GBP_JPY', -1)
-                        orderlaunch('EUR_JPY', -1)
-                        orderlaunch('USD_JPY', -1)
+                        orderlaunch(['GBP_JPY', -1])
+                        orderlaunch(['EUR_JPY', -1])
+                        orderlaunch(['USD_JPY', -1])
                         if Tgr_Verbose is True:
                             txt_msg = "Positions Opened..."
                             tb.send_message(chatid, txt_msg)
@@ -450,9 +478,9 @@ def main():
                         in_action = True
                         continue
                     elif len(listing['orders']) is 0:
-                        orderlaunch('EUR_USD', 1)
-                        orderlaunch('GBP_USD', 1)
-                        orderlaunch('USD_JPY', -1)
+                        orderlaunch(['EUR_USD', 1])
+                        orderlaunch(['GBP_USD', 1])
+                        orderlaunch(['USD_JPY', -1])
                         if Tgr_Verbose is True:
                             txt_msg = "Positions Opened..."
                             tb.send_message(chatid, txt_msg)
@@ -479,9 +507,9 @@ def main():
                         in_action = True
                         continue
                     elif len(listing['orders']) is 0:
-                        orderlaunch('EUR_USD', -1)
-                        orderlaunch('GBP_USD', -1)
-                        orderlaunch('USD_JPY', 1)
+                        orderlaunch(['EUR_USD', -1])
+                        orderlaunch(['GBP_USD', -1])
+                        orderlaunch(['USD_JPY', 1])
                         if Tgr_Verbose is True:
                             txt_msg = "Positions Opened..."
                             tb.send_message(chatid, txt_msg)
