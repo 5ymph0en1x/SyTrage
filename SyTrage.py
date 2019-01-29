@@ -1,6 +1,7 @@
 # Configuration
 # pip3 install oandapyV20
 # pip3 install pyTelegramBotAPI
+# pip3 install python-dateutil
 # Execution
 # python SyTrage.py
 
@@ -22,9 +23,9 @@ import oandapyV20.endpoints.orders as orders
 import telebot
 
 # Bot Parameters
-sigma = 0.00060
+sigma = 0.00042
 sl_tp_prc = 0.005
-trail_point = 10
+trail_point = 5
 spread_limit = 3.5
 Multi_Threading = True
 Tgr_Verbose = True
@@ -118,15 +119,20 @@ def orderlaunch(args):
     else:
         print(json.dumps(rv, indent=2))
         try:
-            trade_id = rv['tradeOpenedID']
-            ordr = TrailingStopLossOrderRequest(tradeID=trade_id, distance=trail_point)
-            r = orders.OrderCreate(accountID, data=ordr.data)
-            rv = api.request(r)
+            key = 'orderFillTransaction'
+            if key in rv:
+                trade_id = rv['orderFillTransaction']['tradeOpened']['tradeID']
+                bid_current = float(rv['orderFillTransaction']['fullPrice']['bids'][0]['price'])
+                decim = str(bid_current)[::-1].find('.')
+                trail_point_ok = trail_point * (1 / (10 ** (decim - 1)))
+                ordr = TrailingStopLossOrderRequest(tradeID=trade_id, distance=trail_point_ok)
+                r = orders.OrderCreate(accountID, data=ordr.data)
+                rva = api.request(r)
+                print(json.dumps(rva, indent=2))
         except oandapyV20.exceptions.V20Error as err:
             print(r.status_code, err)
             return False
         else:
-            print(json.dumps(rv, indent=2))
             return True
 
 
@@ -239,10 +245,10 @@ def main():
                     diff_GJ = (float(price) - float(close_GJ)) / float(close_GJ)
                     diff_JG = diff_GJ * -1
 
-            var_EU = 2 * diff_EU + diff_EG + diff_EJ
-            var_EG = 2 * diff_EG + diff_EU + diff_EJ
-            var_EJ = 2 * diff_EJ + diff_EU + diff_EG
-            var_E = (var_EU + var_EG + var_EJ) / 3
+            var_EU = 3 * diff_EU + diff_EG + diff_EJ
+            var_EG = 3 * diff_EG + diff_EU + diff_EJ
+            var_EJ = 3 * diff_EJ + diff_EU + diff_EG
+            var_E = (var_EU + var_EG + var_EJ) / 5
 
             if var_E > sigma:
                 EUR = 1
@@ -251,10 +257,10 @@ def main():
                 EUR = -1
                 print('EUR: DOWN')
 
-            var_GE = 2 * diff_GE + diff_GU + diff_GJ
-            var_GU = 2 * diff_GU + diff_GE + diff_GJ
-            var_GJ = 2 * diff_GJ + diff_GU + diff_GE
-            var_G = (var_GE + var_GU + var_GJ) / 3
+            var_GE = 3 * diff_GE + diff_GU + diff_GJ
+            var_GU = 3 * diff_GU + diff_GE + diff_GJ
+            var_GJ = 3 * diff_GJ + diff_GU + diff_GE
+            var_G = (var_GE + var_GU + var_GJ) / 5
 
             if var_G > sigma:
                 GBP = 1
@@ -263,10 +269,10 @@ def main():
                 GBP = -1
                 print('GBP: DOWN')
 
-            var_UE = 2 * diff_UE + diff_UG + diff_UJ
-            var_UG = 2 * diff_UG + diff_UE + diff_UJ
-            var_UJ = 2 * diff_UJ + diff_UG + diff_UE
-            var_U = (var_UE + var_UG + var_UJ) / 3
+            var_UE = 3 * diff_UE + diff_UG + diff_UJ
+            var_UG = 3 * diff_UG + diff_UE + diff_UJ
+            var_UJ = 3 * diff_UJ + diff_UG + diff_UE
+            var_U = (var_UE + var_UG + var_UJ) / 5
 
             if var_U > sigma:
                 USD = 1
@@ -275,10 +281,10 @@ def main():
                 USD = -1
                 print('USD: DOWN')
 
-            var_JE = 2 * diff_JE + diff_JG + diff_JU
-            var_JG = 2 * diff_JG + diff_JE + diff_JU
-            var_JU = 2 * diff_JU + diff_JG + diff_JE
-            var_J = (var_JE + var_JG + var_JU) / 3
+            var_JE = 3 * diff_JE + diff_JG + diff_JU
+            var_JG = 3 * diff_JG + diff_JE + diff_JU
+            var_JU = 3 * diff_JU + diff_JG + diff_JE
+            var_J = (var_JE + var_JG + var_JU) / 5
 
             if var_J > sigma:
                 JPY = 1
