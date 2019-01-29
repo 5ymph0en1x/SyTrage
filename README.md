@@ -15,6 +15,8 @@ pip3 install oandapyV20
 
 pip3 install pyTelegramBotAPI
 
+pip3 install python-dateutil
+
 ------------------------------------
 
 Execution
