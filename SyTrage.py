@@ -20,11 +20,13 @@ from oandapyV20.exceptions import V20Error
 import oandapyV20.endpoints.accounts as accounts
 import oandapyV20.endpoints.instruments as instruments
 import oandapyV20.endpoints.orders as orders
+import oandapyV20.endpoints.positions as positions
+import oandapyV20.endpoints.trades as trades
 import telebot
 
 # Bot Parameters
 sigma = 0.00042
-sl_tp_prc = 0.005
+sl_tp_prc = 0.0025
 trail_point = 5
 spread_limit = 3.5
 Multi_Threading = True
@@ -41,11 +43,13 @@ tb = telebot.TeleBot(TOKEN)
 
 # Do Not Touch
 pairs_traded = 'EUR_USD,GBP_USD,EUR_GBP,EUR_JPY,USD_JPY,GBP_JPY'
+pairs_traded_dict = {'EUR_USD', 'GBP_USD', 'EUR_GBP', 'EUR_JPY', 'USD_JPY', 'GBP_JPY'}
 
 api = API(access_token=access_token, environment="practice")
 
 stream = PricingStream(accountID=accountID, params={"instruments": pairs_traded})
 orders_list = orders.OrderList(accountID)
+trades_list = trades.TradesList(accountID)
 
 CEU = instruments.InstrumentsCandles(instrument='EUR_USD', params={"count": 1, "granularity": "M1"})
 CGU = instruments.InstrumentsCandles(instrument='GBP_USD', params={"count": 1, "granularity": "M1"})
@@ -53,6 +57,51 @@ CEG = instruments.InstrumentsCandles(instrument='EUR_GBP', params={"count": 1, "
 CEJ = instruments.InstrumentsCandles(instrument='EUR_JPY', params={"count": 1, "granularity": "M1"})
 CUJ = instruments.InstrumentsCandles(instrument='USD_JPY', params={"count": 1, "granularity": "M1"})
 CGJ = instruments.InstrumentsCandles(instrument='GBP_JPY', params={"count": 1, "granularity": "M1"})
+
+
+def count_trades():
+    rv = api.request(trades_list)
+    trades_details = rv['trades']
+    trades_count = len(trades_details)
+    return(trades_count)
+
+
+def count_unr_profit():
+    r = accounts.AccountSummary(accountID=accountID)
+    rv = api.request(r)
+    unr_profit = float(rv['account'].get('unrealizedPL'))
+    return(unr_profit)
+
+
+def close(pair_to_close):
+    print("Close existing position...")
+    r = positions.PositionDetails(accountID=accountID,
+                                  instrument=pair_to_close)
+
+    try:
+        openPos = api.request(r)
+
+    except V20Error as e:
+        print("V20Error: {}".format(e))
+
+    else:
+        toClose = {}
+        for P in ["long", "short"]:
+            if openPos["position"][P]["units"] != "0":
+                toClose.update({"{}Units".format(P): "ALL"})
+
+        print("prepare to close: %s", json.dumps(toClose))
+        r = positions.PositionClose(accountID=accountID,
+                                    instrument=pair_to_close,
+                                    data=toClose)
+        rv = None
+        try:
+            if toClose:
+                rv = api.request(r)
+                print("close: response: %s", json.dumps(rv, indent=2))
+
+        except V20Error as e:
+            print("V20Error: {}".format(e))
 
 
 def spreadcheck(pairs_checked):
@@ -63,7 +112,10 @@ def spreadcheck(pairs_checked):
         bid = float(value['prices'][0]['bids'][0]['price'])
         ask = float(value['prices'][0]['asks'][0]['price'])
         decim = str(bid)[::-1].find('.')
-        spread = (ask - bid) * (10 ** (decim - 1))
+        if decim < 4:
+            spread = (ask - bid) * (10 ** (3 - 1))
+        if decim >= 4:
+            spread = (ask - bid) * (10 ** (5 - 1))
         if spread > spread_limit:
             print("Spread Limit Exceeded !")
             return False
@@ -85,6 +137,10 @@ def orderlaunch(args):
         raw_current_price = api.request(info)
         bid_current = float(raw_current_price['prices'][0]['bids'][0]['price'])
         decim = str(bid_current)[::-1].find('.')
+        if decim < 4:
+            decim = 3
+        if decim >= 4:
+            decim = 5
         stop_loss = round(bid_current - bid_current * sl_tp_prc, decim)
         take_profit = round(bid_current + bid_current * sl_tp_prc, decim)
 
@@ -98,6 +154,10 @@ def orderlaunch(args):
         raw_current_price = api.request(info)
         ask_current = float(raw_current_price['prices'][0]['asks'][0]['price'])
         decim = str(ask_current)[::-1].find('.')
+        if decim < 4:
+            decim = 3
+        if decim >= 4:
+            decim = 5
         stop_loss = round(ask_current + ask_current * sl_tp_prc, decim)
         take_profit = round(ask_current - ask_current * sl_tp_prc, decim)
 
@@ -124,7 +184,11 @@ def orderlaunch(args):
                 trade_id = rv['orderFillTransaction']['tradeOpened']['tradeID']
                 bid_current = float(rv['orderFillTransaction']['fullPrice']['bids'][0]['price'])
                 decim = str(bid_current)[::-1].find('.')
-                trail_point_ok = trail_point * (1 / (10 ** (decim - 1)))
+                trail_point_ok = 0
+                if decim < 4:
+                    trail_point_ok = trail_point * (1 / (10 ** (3 - 1)))
+                if decim >= 4:
+                    trail_point_ok = trail_point * (1 / (10 ** (5 - 1)))
                 ordr = TrailingStopLossOrderRequest(tradeID=trade_id, distance=trail_point_ok)
                 r = orders.OrderCreate(accountID, data=ordr.data)
                 rva = api.request(r)
@@ -161,8 +225,8 @@ def main():
     minute_cached = 0
     in_action = False
 
-    listing = api.request(orders_list)
-    if len(listing['orders']) is not 0 and in_action is False:
+    listing = count_trades()
+    if listing is not 0 and in_action is False:
         in_action = True
 
     try:
@@ -176,8 +240,10 @@ def main():
             JPY = 0
 
             if minute_cached is not datetime.now().time().minute:
-                listing = api.request(orders_list)
-                if in_action is True and len(listing['orders']) is 0:
+                listing = count_trades()
+                profit = count_unr_profit()
+
+                if in_action is True and listing is 0:
                     if Tgr_Verbose is True:
                         report = accounts.AccountSummary(accountID)
                         api.request(report)
@@ -187,6 +253,19 @@ def main():
                         txt_msg = "Positions Closed...\nBalance: " + balance
                         tb.send_message(chatid, txt_msg)
                     in_action = False
+                if in_action is True and listing < 3 and profit > 0:
+                    for i in pairs_traded_dict:
+                        close(i)
+                    if Tgr_Verbose is True:
+                        report = accounts.AccountSummary(accountID)
+                        api.request(report)
+                        account_details = report.response
+                        balance = str(round(float(account_details['account']['balance']), 2)) + ' ' + \
+                                  account_details['account']['currency']
+                        txt_msg = "Positions Closed...\nBalance: " + balance
+                        tb.send_message(chatid, txt_msg)
+                    in_action = False
+
                 candle_EU = api.request(CEU)
                 candle_GU = api.request(CGU)
                 candle_EG = api.request(CEG)
@@ -222,28 +301,30 @@ def main():
                     minute_cached = datetime.now().time().minute
                     print("Minute Data Updated")
 
-            if i['type'] == 'PRICE':
-                pair = i['instrument']
-                value = i['bids']
-                price = value[0]['price']
-                if pair == 'EUR_USD':
-                    diff_EU = (float(price) - float(close_EU)) / float(close_EU)
-                    diff_UE = diff_EU * -1
-                if pair == 'GBP_USD':
-                    diff_GU = (float(price) - float(close_GU)) / float(close_GU)
-                    diff_UG = diff_GU * -1
-                if pair == 'EUR_GBP':
-                    diff_EG = (float(price) - float(close_EG)) / float(close_EG)
-                    diff_GE = diff_EG * -1
-                if pair == 'EUR_JPY':
-                    diff_EJ = (float(price) - float(close_EJ)) / float(close_EJ)
-                    diff_JE = diff_EJ * -1
-                if pair == 'USD_JPY':
-                    diff_UJ = (float(price) - float(close_UJ)) / float(close_UJ)
-                    diff_JU = diff_UJ * -1
-                if pair == 'GBP_JPY':
-                    diff_GJ = (float(price) - float(close_GJ)) / float(close_GJ)
-                    diff_JG = diff_GJ * -1
+            key = 'type'
+            if key in i:
+                if i['type'] == 'PRICE':
+                    pair = i['instrument']
+                    value = i['bids']
+                    price = value[0]['price']
+                    if pair == 'EUR_USD':
+                        diff_EU = (float(price) - float(close_EU)) / float(close_EU)
+                        diff_UE = diff_EU * -1
+                    if pair == 'GBP_USD':
+                        diff_GU = (float(price) - float(close_GU)) / float(close_GU)
+                        diff_UG = diff_GU * -1
+                    if pair == 'EUR_GBP':
+                        diff_EG = (float(price) - float(close_EG)) / float(close_EG)
+                        diff_GE = diff_EG * -1
+                    if pair == 'EUR_JPY':
+                        diff_EJ = (float(price) - float(close_EJ)) / float(close_EJ)
+                        diff_JE = diff_EJ * -1
+                    if pair == 'USD_JPY':
+                        diff_UJ = (float(price) - float(close_UJ)) / float(close_UJ)
+                        diff_JU = diff_UJ * -1
+                    if pair == 'GBP_JPY':
+                        diff_GJ = (float(price) - float(close_GJ)) / float(close_GJ)
+                        diff_JG = diff_GJ * -1
 
             var_EU = 3 * diff_EU + diff_EG + diff_EJ
             var_EG = 3 * diff_EG + diff_EU + diff_EJ
