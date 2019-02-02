@@ -1,5 +1,5 @@
 # SyTrage
-Statistical Arbitrage using OANDA's API.
+Statistical Arbitrage script using OANDA's API for autotrading Forex.
 
 This script will focus on detecting imbalances between 6 currency pairs.
 
